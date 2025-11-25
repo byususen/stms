@@ -60,7 +60,7 @@ vi_smoothed = model.multistep_smoothing(id_sample, days_data, vi_filled, cloud_d
 ```
 
 ---
-📚 Reference
+## 📚 Reference
 
 If you use STMS in your research, please cite the following article:
 
