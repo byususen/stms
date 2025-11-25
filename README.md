@@ -57,22 +57,9 @@ cloud_data = cloud
 model = stms()
 vi_filled = model.spatiotemporal_filling(id_sample, days_data, vi_data, long_data, lati_data, cloud_data)
 vi_smoothed = model.multistep_smoothing(id_sample, days_data, vi_filled, cloud_data)
-```
 
 ---
 
-## 📈 Visual Output (1 Sample)
-
-### Original (Cloudy)
-![Original](examples/simulated_original.png)
-
-### After STMS Filling
-![Filled](examples/simulated_filled.png)
-
-### Final Smoothed Result
-![Final](examples/simulated_final_result.png)
-
----
 
 ## 📄 License
 
