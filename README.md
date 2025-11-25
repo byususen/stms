@@ -59,14 +59,21 @@ vi_filled = model.spatiotemporal_filling(id_sample, days_data, vi_data, long_dat
 vi_smoothed = model.multistep_smoothing(id_sample, days_data, vi_filled, cloud_data)
 
 ---
+📚 Reference
 
+If you use STMS in your research, please cite the following article:
 
+Suseno, B., Brunel, G., Tisseyre, B., & Wijayanto, H. (2025).
+Spatiotemporal and multistep smoothing for reconstructing cloudy Sentinel-2 vegetation index time series.
+Smart Agricultural Technology.
+https://doi.org/10.1016/j.atech.2025.101378
+
+---
 ## 📄 License
 
 MIT License © Bayu Suseno
 
 ---
-
 ## 🤝 Contributing
 
 Feel free to open issues or pull requests! Contributions are welcome.
