@@ -58,7 +58,7 @@ model = stms()
 vi_filled = model.spatiotemporal_filling(id_sample, days_data, vi_data, long_data, lati_data, cloud_data)
 vi_smoothed = model.multistep_smoothing(id_sample, days_data, vi_filled, cloud_data)
 
-```python
+
 ---
 📚 Reference
 
