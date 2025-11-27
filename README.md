@@ -14,37 +14,27 @@ STMS performs two complementary steps:
 
 Reconstructs missing or low-quality values by:
 
-Detecting consecutive unreliable observations
-
-Searching for spatially nearby or structurally similar time series
-
-Selecting candidates based on correlation, distance, and/or grouping (nested IDs)
-
-Predicting values through polynomial regression and weighted aggregation
+- Detecting consecutive unreliable observations
+- Searching for spatially nearby or structurally similar time series
+- Selecting candidates based on correlation, distance, and/or grouping (nested IDs)
+- Predicting values through polynomial regression and weighted aggregation
 
 2️⃣ Multistep Smoothing
 
-Applies iterative Generalized Additive Models (GAMs) with increasing quality thresholds to:
+Applies iterative smoothing with increasing quality thresholds to:
 
-Smooth noisy observations
-
-Preserve phenological or seasonal shapes
-
-Adaptively reweight low-confidence points
-
-Produce a final clean, continuous time-series signal
+- Smooth noisy observations
+- Preserve phenological or seasonal shapes
+- Adaptively reweight low-confidence points
+- Produce a final smooth, continuous time-series signal
 
 STMS is suitable for:
 
-Cloudy or incomplete satellite vegetation indices
-
-Remote sensing environmental monitoring
-
-Agricultural time-series
-
-Ecological and climate data
-
-Any geotemporal dataset with missing or noisy values
+- Consecutive cloud or incomplete satellite vegetation indices
+- Remote sensing environmental monitoring
+- Agricultural time-series
+- Ecological and climate data
+- Any geotemporal dataset with consecutive missing or noisy values
 
 ---
 
@@ -110,13 +100,13 @@ model = stms(
 )
 ```
 
-| Parameter          | Purpose                                                  |
-| ------------------ | -------------------------------------------------------- |
-| `n_consecutive`    | Minimum consecutive low-quality points considered a gap  |
-| `n_tail`           | Padding before/after a gap                               |
-| `threshold_cloudy` | Quality threshold to classify an observation as “cloudy” |
-| `threshold_corr`   | Minimum correlation required to accept a candidate       |
-| `n_candidate`      | Maximum global number of candidate series used           |
+| Parameter            | Description                                               |
+| -------------------- | --------------------------------------------------------- |
+| `n_consecutive`      | Minimum consecutive low-quality points considered a gap   |
+| `n_tail`             | Padding before/after a gap                                |
+| `threshold_cloudy`   | Quality threshold to classify an observation as “cloudy”  |
+| `threshold_corr`     | Minimum correlation required to accept a candidate        |
+| `n_candidate`        | Maximum global number of candidate series used            |
 | `id_nested`          | Optional grouping (e.g., pixel → field, station → region) |
 | `n_candidate_nested` | Limit candidates per group                                |
 | `max_candidate_pool` | Maximum groups selected                                   |
