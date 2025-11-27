@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='stms',
-    version='0.2.0',  
+    version='0.3.0',  
     author='Bayu Suseno',
     author_email='bayu.suseno@outlook.com',
     description='Spatiotemporal Filling and Multistep Smoothing for satellite time series reconstruction',
