@@ -1,14 +1,46 @@
-# STMS: Spatiotemporal and Multistep Smoothing for Sentinel-2 Data Reconstruction
+# 🌿 STMS: Spatiotemporal and Multistep Smoothing for Time-Series Reconstruction
 
-STMS is a Python package designed to reconstruct and smooth time-series vegetation index (VI) data, particularly useful in handling cloudy observations in satellite imagery like Sentinel-2.
+**STMS** is a Python package for reconstructing and smoothing cloud-affected or noisy time-series data, particularly from satellite-derived vegetation indices (VI) such as NDVI, EVI, MSAVI, NIRv, and other time-series environmental indicators
 
-It performs two main steps:
-1. **Spatiotemporal Filling** — Uses spatial neighbors and correlation to fill in cloudy or missing data.
-2. **Multistep Smoothing** — Applies Generalized Additive Models (GAMs) for smoothing over time.
+Although originally designed for Sentinel-2 data, STMS is data-agnostic and works with any temporal signal measured at geolocated sampling units.
+
+---
+
+## ✨ What STMS Does
+
+STMS performs two complementary steps:
+
+1️⃣ Spatiotemporal Filling
+
+Reconstructs missing or low-quality values by:
+
+- Detecting consecutive unreliable observations
+- Searching for spatially nearby or structurally similar time series
+- Selecting candidates based on correlation, distance, and/or grouping (nested IDs)
+- Predicting values through polynomial regression and weighted aggregation
+
+2️⃣ Multistep Smoothing
+
+Applies iterative smoothing with increasing quality thresholds to:
+
+- Smooth noisy observations
+- Preserve phenological or seasonal shapes
+- Adaptively reweight low-confidence points
+- Produce a final smooth, continuous time-series signal
+
+STMS is suitable for:
+
+- Consecutive cloud or incomplete satellite vegetation indices
+- Remote sensing environmental monitoring
+- Agricultural time-series
+- Ecological and climate data
+- Any geotemporal dataset with consecutive missing or noisy values
 
 ---
 
 ## 📦 Installation
+
+From PyPI:
 
 ```bash
 pip install stms
@@ -16,58 +48,117 @@ pip install stms
 
 ---
 
-## 🔬 Features
+## ⚙️ Basic Usage
+```python
+from stms import stms
 
-- Handles **consecutive cloudy observations**
-- Incorporates **spatial proximity** and **temporal correlation**
-- Multi-round **GAM-based smoothing**
-- Easy-to-use API
+model = stms()
+
+vi_filled = model.spatiotemporal_filling(
+    id_sample=id_array,
+    days_data=day_of_year,
+    vi_data=vi_raw,
+    long_data=longitude,
+    lati_data=latitude,
+    cloud_data=cloudscore
+)
+
+vi_smoothed = model.multistep_smoothing(
+    id_sample=id_array,
+    days_data=day_of_year,
+    vi_data=vi_filled,
+    cloud_data=cloudscore
+)
+```
+
+### Required Inputs
+| Name                     | Description                                             |
+| ------------------------ | ------------------------------------------------------- |
+| `id_sample`              | ID for each time-series (one ID per pixel/plot/station) |
+| `days_data`              | Time axis as day-of-year or numeric timestamp           |
+| `vi_data`                | Raw VI values (cloudy allowed)                          |
+| `long_data`, `lati_data` | Spatial coordinates (used for candidate search)         |
+| `cloud_data`             | CloudScore+ or quality weights                          |
+
 
 ---
 
-## 🧪 Example: Simulated Sentinel-2 Time Series
+### 🔧 Parameter Overview
+
+You can customize the STMS behavior when constructing the model:
+```python
+model = stms(
+    n_consecutive=5,
+    threshold_cloudy=0.1,
+    threshold_corr=0.9,
+    n_candidate=10,
+    n_tail=24,
+    id_nested=None,
+    n_candidate_nested=None,
+    max_candidate_pool=None,
+    candidate_sampling="distance"
+)
+```
+
+| Parameter            | Description                                               |
+| -------------------- | --------------------------------------------------------- |
+| `n_consecutive`      | Minimum consecutive low-quality points considered a gap   |
+| `n_tail`             | Padding before/after a gap                                |
+| `threshold_cloudy`   | Quality threshold to classify an observation as “cloudy”  |
+| `threshold_corr`     | Minimum correlation required to accept a candidate        |
+| `n_candidate`        | Maximum global number of candidate series used            |
+| `id_nested`          | Optional grouping (e.g., pixel → field, station → region) |
+| `n_candidate_nested` | Limit candidates per group                                |
+| `max_candidate_pool` | Maximum groups selected                                   |
+| `candidate_sampling` | `"distance"` or `"random"` group sampling                 |
+
+---
+
+## 🧪 Example with Simulated Data
 
 ```python
 import numpy as np
 from stms import stms
 
-# Simulate vegetation index (VI) using sine function
-def sine_func(x, A, B, C, D):
-    return A * np.sin(2 * (np.pi / B) * (x - C)) + D
+# simulate VI curve
+def sine_curve(t):
+    return 0.3*np.sin(2*np.pi/100 * (t - 90)) + 0.5
 
-# Time series parameters
-A, B, C, D = 0.3, 100, 90, 0.5
-x = np.arange(5, 400, 5)
-vi = sine_func(x, A, B, C, D) + np.random.uniform(-0.05, 0.05, len(x))
+x = np.arange(0, 365, 5)
+vi = sine_curve(x) + np.random.normal(0, 0.02, len(x))
 cloud = np.ones_like(vi)
 
-# Add thick cloud contamination
-vi[50:60] = np.random.uniform(0.1, 0.2, 10)
-cloud[50:60] = 0.01
+# introduce synthetic cloud contamination
+cloud[40:55] = 0.01
+vi[40:55] = np.random.uniform(0.05, 0.1, 15)
 
-# Format for STMS
-id_sample = np.array(["sample_0"] * len(x))
-days_data = x
-vi_data = vi.copy()
-long_data = np.array([101.5] * len(x))
-lati_data = np.array([-2.0] * len(x))
-cloud_data = cloud
-
-# Apply STMS
 model = stms()
-vi_filled = model.spatiotemporal_filling(id_sample, days_data, vi_data, long_data, lati_data, cloud_data)
-vi_smoothed = model.multistep_smoothing(id_sample, days_data, vi_filled, cloud_data)
+vi_filled = model.spatiotemporal_filling(
+    id_sample=np.array(["A"]*len(x)),
+    days_data=x,
+    vi_data=vi,
+    long_data=np.repeat(110.0, len(x)),
+    lati_data=np.repeat(-7.0, len(x)),
+    cloud_data=cloud
+)
+
+vi_smooth = model.multistep_smoothing(
+    id_sample=np.array(["A"]*len(x)),
+    days_data=x,
+    vi_data=vi_filled,
+    cloud_data=cloud
+)
+
 ```
 
 ---
-## 📚 Reference
+## 📚 Citation
 
-If you use STMS in your research, please cite the following article:
+If STMS contributes to your research, please cite:
 
-Suseno, B., Brunel, G., Tisseyre, B., & Wijayanto, H. (2025).
-Spatiotemporal and multistep smoothing for reconstructing cloudy Sentinel-2 vegetation index time series.
-Smart Agricultural Technology.
-https://doi.org/10.1016/j.atech.2025.101378
+Suseno, B., Brunel, G., Wijayanto, H., Sadik, K., Afendi, F. M., & Tisseyre, B. (2025). 
+Reconstructing satellite temporal series data under cloudy conditions: Application in predicting rice growth phases. 
+Smart Agricultural Technology, 12, 101378. https://doi.org/10.1016/j.atech.2025.101378
 
 ---
 ## 📄 License
@@ -77,4 +168,5 @@ MIT License © Bayu Suseno
 ---
 ## 🤝 Contributing
 
-Feel free to open issues or pull requests! Contributions are welcome.
+Pull requests, bug reports, and feature suggestions are welcome!
+Please open an issue if you encounter any problem.
