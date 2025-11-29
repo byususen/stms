@@ -68,18 +68,18 @@ class stms:
         smoothing_max=1,
         smoothing_increment=0.1,
         lamdas=np.logspace(-3, 2, 50),
-        vi_max=None,             # <- now optional
-        vi_min=None,             # <- now optional
+        vi_max=None,             
+        vi_min=None,             
         n_consecutive=5,
         n_tail=24,
         threshold_cloudy=0.1,
         threshold_corr=0.9,
-        n_candidate=None,            # global max candidates (None = unlimited)
-        n_candidate_nested=None,     # max per nested group (None = unlimited)
+        n_candidate=None,            
+        n_candidate_nested=None,     
         candidate_sampling="distance",
-        max_candidate_pool=None,     # max tested candidates (None = all)
-        step_min=1,                  # smallest shift (good corr)
-        step_max=6,                  # largest shift (bad corr)
+        max_candidate_pool=None,     
+        step_min=1,                  
+        step_max=6,                  
     ):
         self.n_spline = n_spline
         self.smoothing_min = smoothing_min
@@ -129,7 +129,6 @@ class stms:
         vi_raw = vi_data.copy()
         idsamp_unique = np.unique(id_sample)
 
-        # Effective strategy and pool size for this call
         if candidate_sampling is None:
             candidate_sampling = self.candidate_sampling
         if max_candidate_pool is None:
@@ -187,10 +186,111 @@ class stms:
                 vi_gap = np.append(vi_gap, vi_values)
                 cloud_gap = np.append(cloud_gap, cloud_values)
 
-        # STEP 2. Creating target interval (unchanged logic, omitted here for brevity)
-        # ... (use exactly your existing STEP 2 code)
+        # STEP 2. Creating target interval
+        count = 1
+        unique_int = np.empty(0, dtype=int)
+        id_int = np.empty(0, dtype=object)
+        days_int = np.empty(0, dtype=int)
+        long_int = np.empty(0, dtype=float)
+        lati_int = np.empty(0, dtype=float)
+        vi_int = np.empty(0, dtype=float)
+        cloud_int = np.empty(0, dtype=float)
 
-        # --- I'll jump to STEP 3 where clipping happens ---
+        for i in tqdm(np.unique(id_gap), desc="STEP 2. Creating target interval"):
+            mask = (id_gap == i)
+            id_values = id_gap[mask]
+            days_values = days_gap[mask]
+            long_values = long_gap[mask]
+            lati_values = lati_gap[mask]
+            vi_values = vi_gap[mask]
+            cloud_values = cloud_gap[mask]
+
+            filter_cloud = (cloud_values <= self.threshold_cloudy)
+            cons_temp = 0
+            cons_max = 0
+
+            for j in range(len(filter_cloud)):
+                if (filter_cloud[j]) and (j < len(filter_cloud) - 1):
+                    cons_temp += 1
+                elif filter_cloud[j] and (j == len(filter_cloud) - 1):
+                    cons_max = cons_temp + 1
+                    cons_temp = 0
+
+                    if cons_max >= self.n_consecutive:
+                        if j - cons_max - self.n_tail < 0:
+                            id_temp = id_values[0:j + self.n_tail + 1]
+                            days_temp = days_values[0:j + self.n_tail + 1]
+                            long_temp = long_values[0:j + self.n_tail + 1]
+                            lati_temp = lati_values[0:j + self.n_tail + 1]
+                            vi_temp = vi_values[0:j + self.n_tail + 1]
+                            cloud_temp = cloud_values[0:j + self.n_tail + 1]
+                        elif j + self.n_tail >= len(filter_cloud):
+                            id_temp = id_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            days_temp = days_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            long_temp = long_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            lati_temp = lati_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            vi_temp = vi_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            cloud_temp = cloud_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                        else:
+                            id_temp = id_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            days_temp = days_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            long_temp = long_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            lati_temp = lati_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            vi_temp = vi_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            cloud_temp = cloud_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+
+                        unique_temp = np.empty(len(id_temp), dtype=int)
+                        unique_temp.fill(count)
+                        count += 1
+
+                        id_int = np.append(id_int, id_temp)
+                        unique_int = np.append(unique_int, unique_temp)
+                        days_int = np.append(days_int, days_temp)
+                        long_int = np.append(long_int, long_temp)
+                        lati_int = np.append(lati_int, lati_temp)
+                        vi_int = np.append(vi_int, vi_temp)
+                        cloud_int = np.append(cloud_int, cloud_temp)
+                        cons_max = 0
+
+                else:
+                    cons_max = cons_temp
+                    cons_temp = 0
+
+                    if cons_max >= self.n_consecutive:
+                        if j - cons_max - self.n_tail < 0:
+                            id_temp = id_values[0:j + self.n_tail + 1]
+                            days_temp = days_values[0:j + self.n_tail + 1]
+                            long_temp = long_values[0:j + self.n_tail + 1]
+                            lati_temp = lati_values[0:j + self.n_tail + 1]
+                            vi_temp = vi_values[0:j + self.n_tail + 1]
+                            cloud_temp = cloud_values[0:j + self.n_tail + 1]
+                        elif j + self.n_tail >= len(filter_cloud):
+                            id_temp = id_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            days_temp = days_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            long_temp = long_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            lati_temp = lati_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            vi_temp = vi_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                            cloud_temp = cloud_values[j - cons_max - self.n_tail + 1:len(filter_cloud)]
+                        else:
+                            id_temp = id_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            days_temp = days_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            long_temp = long_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            lati_temp = lati_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            vi_temp = vi_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+                            cloud_temp = cloud_values[j - cons_max - self.n_tail + 1:j + self.n_tail + 1]
+
+                        unique_temp = np.empty(len(id_temp), dtype=int)
+                        unique_temp.fill(count)
+                        count += 1
+
+                        id_int = np.append(id_int, id_temp)
+                        unique_int = np.append(unique_int, unique_temp)
+                        days_int = np.append(days_int, days_temp)
+                        long_int = np.append(long_int, long_temp)
+                        lati_int = np.append(lati_int, lati_temp)
+                        vi_int = np.append(vi_int, vi_temp)
+                        cloud_int = np.append(cloud_int, cloud_temp)
+                        cons_max = 0
 
         # STEP 3. Spatiotemporal filling
         for i in tqdm(np.unique(unique_int), desc="STEP 3. Spatiotemporal filling"):
@@ -210,11 +310,107 @@ class stms:
             filter_cand_all = np.empty(0, dtype=int)
             filterpred_cand_all = np.empty(0, dtype=int)
 
-            # ... (distance computation, candidate ordering etc. unchanged) ...
+            # distance to all ids
+            distance_values = np.empty(len(idsamp_unique), dtype=float)
+            distance_values.fill(0.0000001)
 
+            loc_target = np.array((lati_target[0], long_target[0]))
+            filter_target_lo = (cloud_target <= self.threshold_cloudy)
+            filter_target_hi = (cloud_target > self.threshold_cloudy)
+
+            for idx, sid in enumerate(idsamp_unique):
+                loc_cand = np.array((lat_by_id[sid], lon_by_id[sid]))
+                distance_temp = math.dist(loc_target, loc_cand)
+                if distance_temp != 0:
+                    distance_values[idx] = distance_temp
+
+            distance_invers = np.reciprocal(distance_values)
+            distance_norm = np.abs(
+                (distance_invers - np.min(distance_invers)) /
+                (np.max(distance_invers) - np.min(distance_invers))
+            )
+            distance_norm[distance_norm <= 0] = 0.0000001
+
+            index_distance = np.argsort(distance_norm)
+            base_ids = idsamp_unique[index_distance]
+
+            # remove the target id itself from candidate list
+            base_ids = base_ids[base_ids != id_target[0]]
+
+            # Build candidate order based on sampling strategy and id_nested
+            if candidate_sampling == "random":
+                if nested_by_id is not None:
+                    # group by nested id in distance order, then shuffle within each group
+                    groups = {}
+                    seg_order = []
+                    for sid in base_ids:
+                        seg = nested_by_id[sid]
+                        if seg not in groups:
+                            groups[seg] = []
+                            seg_order.append(seg)
+                        groups[seg].append(sid)
+                    cand_list = []
+                    for seg in seg_order:
+                        arr = np.array(groups[seg])
+                        arr = np.random.permutation(arr)
+                        cand_list.append(arr)
+                    if len(cand_list) > 0:
+                        cand_ids = np.concatenate(cand_list)
+                    else:
+                        cand_ids = np.array([], dtype=base_ids.dtype)
+                else:
+                    cand_ids = np.random.permutation(base_ids)
+            else:
+                # "distance" or unknown -> distance-based order
+                cand_ids = base_ids
+
+            # Limit candidate pool size if requested
+            if (max_candidate_pool is not None) and (len(cand_ids) > max_candidate_pool):
+                cand_ids = cand_ids[:max_candidate_pool]
+
+            # Track how many candidates used per nested group (if any)
+            nested_counts = {}  # seg -> count of accepted candidates
             # Loop over candidate ids
             for k in cand_ids:
-                # ... (window search, corr_temp etc. unchanged) ...
+                if (nested_by_id is not None) and (self.n_candidate_nested is not None):
+                    seg_k = nested_by_id[k]
+                    if nested_counts.get(seg_k, 0) >= self.n_candidate_nested:
+                        continue
+
+                mask_cand = (id_sample == k)
+                vi_cand = vi_raw[mask_cand]
+                cloud_cand = cloud_data[mask_cand]
+
+                distance_cand = distance_norm[idsamp_unique == k]
+                last_row = len(vi_cand)
+                filter_cand_hi = (cloud_cand > self.threshold_cloudy)
+                first_row = 0
+                end_row = len(vi_target)
+                corr_temp = 0.0
+                corr_value = 0.0  # for adaptive step
+
+                # sliding-window search: pick the window with max correlation
+                while end_row <= last_row:
+                    filter_hi = filter_target_hi * filter_cand_hi[first_row:end_row]
+                    filter_pred = filter_target_lo * filter_cand_hi[first_row:end_row]
+
+                    if np.sum(filter_hi) >= np.sum(filter_target_hi) / 2 and np.sum(filter_pred) > 0:
+                        vi_cand_cut = vi_cand[first_row:end_row]
+                        corr_value = np.corrcoef(vi_target[filter_hi], vi_cand_cut[filter_hi])[0, 1]
+                        if corr_value > corr_temp:
+                            corr_temp = corr_value
+                            vi_cand_temp = vi_cand_cut
+                            filter_temp = filter_hi
+                            filter_pred_temp = filter_pred
+
+                    corr_use = max(corr_temp, corr_value)
+                    corr_use = max(0.0, min(1.0, corr_use))  # clamp to [0,1]
+
+                    step = int(round(self.step_max - corr_use * (self.step_max - self.step_min)))
+                    step = max(self.step_min, min(step, self.step_max))
+
+                    first_row += step
+                    end_row += step
 
                 if corr_temp >= self.threshold_corr:
                     distance_cand_all = np.append(distance_cand_all, distance_cand)
@@ -222,8 +418,7 @@ class stms:
                     vi_cand_all = np.append(vi_cand_all, vi_cand_temp)
                     filter_cand_all = np.append(filter_cand_all, filter_temp)
                     filterpred_cand_all = np.append(filterpred_cand_all, filter_pred_temp)
-                    # nested_counts update etc.
-
+                    
                 if (self.n_candidate is not None) and (len(corr_cand_all) == self.n_candidate):
                     break
 
@@ -243,7 +438,6 @@ class stms:
                 model_pred = np.poly1d(model_coef)
                 vi_cand_pred = model_pred(vi_cand_temp)
 
-                # --- NEW: optional clipping here ---
                 if self.vi_max is not None:
                     vi_cand_pred[vi_cand_pred > self.vi_max] = self.vi_max
                 if self.vi_min is not None:
@@ -275,11 +469,10 @@ class stms:
                 vi_pred_fin = np.divide(
                     vi_pred_sum,
                     weight_pred_sum,
-                    out=vi_target.copy(),          # fallback where denom = 0
+                    out=vi_target.copy(),          
                     where=weight_pred_sum > 0,
                 )
 
-                # --- NEW: revert to original where outside [vi_min, vi_max] ---
                 if (self.vi_max is not None) or (self.vi_min is not None):
                     bad_mask = np.zeros_like(vi_pred_fin, dtype=bool)
                     if self.vi_max is not None:
@@ -331,7 +524,6 @@ class stms:
                 vi_smooth = gam.predict(days_values)
                 vi_diff = vi_smooth - vi_values
 
-                # --- NEW: optional clipping here ---
                 if self.vi_max is not None:
                     vi_smooth[vi_smooth > self.vi_max] = self.vi_max
                 if self.vi_min is not None:
